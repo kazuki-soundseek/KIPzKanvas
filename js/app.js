@@ -92,6 +92,11 @@
   var pendingImage = null;
   var imgSrcCache = {};
   var composeEl = null;
+  var drawCv = null, drawCtx = null;
+  var drawStrokes = [];
+  var drawCur = null;
+  var drawPen = { color: '#171a20', marker: false, thick: false };
+  var DRAW_W = 1280, DRAW_H = 720;
 
   function serverNow() { return transport ? transport.serverNow() : Date.now(); }
 
@@ -450,6 +455,85 @@
     }).catch(function () {});
   }
 
+  /* ---------- 手書き ---------- */
+  var PEN_COLORS = { black: '#171a20', red: '#dc2626', blue: '#2563eb' };
+
+  function drawPos(e) {
+    var r = drawCv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * DRAW_W / r.width, y: (e.clientY - r.top) * DRAW_H / r.height };
+  }
+  function paintStroke(s) {
+    var p = s.points;
+    drawCtx.save();
+    drawCtx.lineJoin = 'round';
+    drawCtx.lineCap = 'round';
+    if (s.marker) {
+      /* 蛍光ペン: 半透明の黄色を「乗算」で重ねると、下の文字が透けて見える */
+      drawCtx.strokeStyle = 'rgba(250, 204, 21, .55)';
+      drawCtx.fillStyle = 'rgba(250, 204, 21, .55)';
+      drawCtx.lineWidth = s.thick ? 46 : 30;
+      drawCtx.globalCompositeOperation = 'multiply';
+    } else {
+      drawCtx.strokeStyle = s.color;
+      drawCtx.fillStyle = s.color;
+      drawCtx.lineWidth = s.thick ? 14 : 6;
+    }
+    if (p.length === 1) {
+      drawCtx.beginPath();
+      drawCtx.arc(p[0].x, p[0].y, drawCtx.lineWidth / 2, 0, Math.PI * 2);
+      drawCtx.fill();
+      drawCtx.restore();
+      return;
+    }
+    drawCtx.beginPath();
+    drawCtx.moveTo(p[0].x, p[0].y);
+    for (var i = 1; i < p.length - 1; i++) {
+      drawCtx.quadraticCurveTo(p[i].x, p[i].y, (p[i].x + p[i + 1].x) / 2, (p[i].y + p[i + 1].y) / 2);
+    }
+    drawCtx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
+    drawCtx.stroke();
+    drawCtx.restore();
+  }
+  function repaintDraw() {
+    drawCtx.clearRect(0, 0, DRAW_W, DRAW_H);
+    drawStrokes.forEach(paintStroke);
+  }
+  function updatePenButtons() {
+    $all('.pen-btn[data-pen]').forEach(function (b) {
+      var key = b.dataset.pen;
+      var sel = drawPen.marker ? key === 'marker' : PEN_COLORS[key] === drawPen.color;
+      b.classList.toggle('selected', sel);
+    });
+    $all('.pen-btn[data-penw]').forEach(function (b) {
+      b.classList.toggle('selected', (b.dataset.penw === 'thick') === drawPen.thick);
+    });
+  }
+  function openDraw() {
+    drawStrokes = [];
+    drawCur = null;
+    repaintDraw();
+    updatePenButtons();
+    openModal('draw-modal');
+  }
+  function sendDrawing() {
+    if (!drawStrokes.length) return;
+    var ex = document.createElement('canvas');
+    ex.width = DRAW_W;
+    ex.height = DRAW_H;
+    var c = ex.getContext('2d');
+    c.fillStyle = '#ffffff';
+    c.fillRect(0, 0, DRAW_W, DRAW_H);
+    c.drawImage(drawCv, 0, 0);
+    var dataUrl = ex.toDataURL('image/jpeg', 0.85);
+    closeAllModals();
+    transport.uploadImage(dataUrl, DRAW_W, DRAW_H).then(function (imgId) {
+      imgSrcCache[imgId] = dataUrl;
+      dispatch({ t: 'cue', cue: baseCue({ imgId: imgId, imgW: DRAW_W, imgH: DRAW_H, text: '✍️ 手書き', color: selectedColor() }) });
+    }).catch(function () {
+      alert('手書きを送れませんでした。通信を確認してもう一度お試しください。');
+    });
+  }
+
   /* ---------- 描画 ---------- */
   function renderAll() {
     if (!joined) return;
@@ -535,7 +619,7 @@
         meta.textContent = 'この指示は取り消されました（' + fmtTime(lc.ts) + '）';
       } else {
         var mine = lc.acks && lc.acks[me.id];
-        meta.textContent = fmtTime(lc.ts) + '　' + ((lc.from && lc.from.name) || '') + '　' + colorLabel(lc.color) + (kind === 'image' ? '　画像' : '') + (mine ? '　✓スタンプ送信済み' : '');
+        meta.textContent = fmtTime(lc.ts) + '　' + ((lc.from && lc.from.name) || '') + '　' + colorLabel(lc.color) + (kind === 'image' ? '　' + (lc.text || '画像') : '') + (mine ? '　✓スタンプ送信済み' : '');
       }
     }
     if (me.role === 'talent' && (!lc || lc.canceled || kind === 'text')) fitText();
@@ -953,6 +1037,40 @@
     $('#img-discard').addEventListener('click', function () {
       pendingImage = null;
       $('#img-pending').hidden = true;
+    });
+
+    /* 手書き */
+    drawCv = $('#draw-canvas');
+    drawCtx = drawCv.getContext('2d');
+    $('#btn-draw').addEventListener('click', openDraw);
+    $('#draw-send').addEventListener('click', sendDrawing);
+    $('#draw-undo').addEventListener('click', function () { drawStrokes.pop(); repaintDraw(); });
+    $('#draw-clear').addEventListener('click', function () { drawStrokes = []; repaintDraw(); });
+    $all('.pen-btn[data-pen]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.pen === 'marker') { drawPen.marker = true; }
+        else { drawPen.marker = false; drawPen.color = PEN_COLORS[b.dataset.pen]; }
+        updatePenButtons();
+      });
+    });
+    $all('.pen-btn[data-penw]').forEach(function (b) {
+      b.addEventListener('click', function () { drawPen.thick = b.dataset.penw === 'thick'; updatePenButtons(); });
+    });
+    drawCv.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      try { drawCv.setPointerCapture(e.pointerId); } catch (err) {}
+      drawCur = { points: [drawPos(e)], color: drawPen.color, marker: drawPen.marker, thick: drawPen.thick };
+      drawStrokes.push(drawCur);
+      repaintDraw();
+    });
+    drawCv.addEventListener('pointermove', function (e) {
+      if (!drawCur) return;
+      e.preventDefault();
+      drawCur.points.push(drawPos(e));
+      repaintDraw();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      drawCv.addEventListener(ev, function () { drawCur = null; });
     });
 
     $('#stamp-ok').addEventListener('click', function () { sendStamp('ok'); });

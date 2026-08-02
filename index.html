@@ -88,6 +88,7 @@
         <button type="button" id="btn-mark" class="tool-btn" title="選択した文字にマーカー">🖊 マーカー</button>
         <button type="button" id="btn-unmark" class="tool-btn" title="マーカーを消す">解除</button>
         <button type="button" id="btn-image" class="tool-btn" title="画像を送る">📷 画像</button>
+        <button type="button" id="btn-draw" class="tool-btn" title="手書きで送る">✍️ 手書き</button>
         <input type="file" id="image-input" accept="image/*" hidden>
         <button type="button" id="btn-send" class="primary send-btn">送信</button>
       </div>
@@ -183,6 +184,30 @@
     <hr>
     <div class="modal-row">
       <button type="button" id="btn-clear" class="danger ghost">履歴を全消去</button>
+    </div>
+  </div>
+</div>
+
+<!-- 手書き（東京側） -->
+<div class="modal-backdrop" id="draw-modal" hidden>
+  <div class="modal draw-modal">
+    <h2>手書きで送る</h2>
+    <div class="draw-tools">
+      <button type="button" class="pen-btn" data-pen="black"><span class="pen-swatch" style="background:#171a20"></span>黒</button>
+      <button type="button" class="pen-btn" data-pen="red"><span class="pen-swatch" style="background:#dc2626"></span>赤</button>
+      <button type="button" class="pen-btn" data-pen="blue"><span class="pen-swatch" style="background:#2563eb"></span>青</button>
+      <button type="button" class="pen-btn" data-pen="marker"><span class="pen-swatch" style="background:#fde047"></span>マーカー</button>
+      <span class="sep"></span>
+      <button type="button" class="pen-btn" data-penw="thin">細</button>
+      <button type="button" class="pen-btn" data-penw="thick">太</button>
+      <span class="sep"></span>
+      <button type="button" id="draw-undo" class="pen-btn">↩ 元に戻す</button>
+      <button type="button" id="draw-clear" class="pen-btn">全消し</button>
+    </div>
+    <canvas id="draw-canvas" width="1280" height="720"></canvas>
+    <div class="modal-row">
+      <button type="button" id="draw-send" class="primary">送信</button>
+      <button type="button" class="ghost" data-close>やめる</button>
     </div>
   </div>
 </div>
