@@ -421,7 +421,8 @@
 
   function startCountdown(sec) {
     if (activeCountdown()) return;
-    transport.sendOp({ t: 'countdown', cd: { id: uid(), seconds: sec, startAt: serverNow() + 700, canceled: false } });
+    /* 開始まで1秒の「構え」を置き、以降は各数字がきっかり1秒ずつになる */
+    transport.sendOp({ t: 'countdown', cd: { id: uid(), seconds: sec, startAt: serverNow() + 1000, canceled: false } });
   }
   function cancelCountdown() {
     var c = roomState.countdown;
@@ -988,7 +989,12 @@
       var remain = end - now;
       if (remain > -1200 && now > c.startAt - 3000) {
         show = true;
-        if (remain > 0) {
+        if (now < c.startAt) {
+          /* 開始前の「構え」: 数字を薄く出すだけ。音も鳴らさない */
+          text = String(c.seconds);
+          cls = 'count standby';
+          if (cdView.id !== c.id) { cdView.id = c.id; cdView.lastNum = null; }
+        } else if (remain > 0) {
           var num = Math.min(c.seconds, Math.ceil(remain / 1000));
           text = String(num);
           cls = 'count';

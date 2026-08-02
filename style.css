@@ -400,6 +400,7 @@ body:not([data-view="talent"]) .talent-only { display: none !important; }
   color: var(--ink);
 }
 .cd-num.go { color: var(--ok); }
+.cd-num.standby { opacity: .3; }
 .cd-num.stopped { color: var(--muted); font-size: min(24vw, 30vh); }
 .cd-num.pulse { animation: cdpulse .3s var(--ease-out); }
 @keyframes cdpulse {

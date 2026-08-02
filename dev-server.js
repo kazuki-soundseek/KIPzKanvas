@@ -106,7 +106,7 @@ const server = http.createServer((req, res) => {
       try {
         const { op } = JSON.parse(body);
         // カウント開始時刻は端末ではなくサーバーの時計で決める（端末間の時計ズレ対策）
-        if (op && op.t === 'countdown' && op.cd) op.cd.startAt = Date.now() + 700;
+        if (op && op.t === 'countdown' && op.cd) op.cd.startAt = Date.now() + 1000;
         if (op && op.t === 'clearCues') room.images.clear();
         applyOp(room.state, op);
         broadcast(room);
