@@ -175,6 +175,31 @@
   function goSound() { tone(1245, 450, 0, 'sine', 0.45); }
   function vibrate(pat) { if (navigator.vibrate) { try { navigator.vibrate(pat); } catch (e) {} } }
 
+  /* ---------- 全画面表示 ---------- */
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  function toggleFullscreen() {
+    var root = document.documentElement;
+    if (isFullscreen()) {
+      var ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (ex) ex.call(document);
+      return;
+    }
+    var fn = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!fn) {
+      /* iPhoneのSafariは全画面APIが使えないため、代わりの方法を案内する */
+      alert('この端末のブラウザは全画面表示に対応していません。\niPhoneの場合は、共有ボタン →「ホーム画面に追加」から開くと全画面で使えます。');
+      return;
+    }
+    var p = fn.call(root);
+    if (p && p.catch) p.catch(function () {});
+  }
+  function updateFsBtn() {
+    var b = $('#btn-fullscreen');
+    if (b) b.textContent = isFullscreen() ? '元に戻す' : '全画面';
+  }
+
   /* ---------- 画面スリープ防止 ---------- */
   function requestWakeLock() {
     if (!('wakeLock' in navigator)) return;
@@ -1164,6 +1189,13 @@
 
     setSound(soundOn);
     $('#btn-sound').addEventListener('click', function () { setSound(!soundOn); initAudio(); });
+    $('#btn-fullscreen').addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFsBtn);
+    document.addEventListener('webkitfullscreenchange', updateFsBtn);
+    /* ホーム画面から起動した場合はもともと全画面なのでボタンを隠す */
+    if ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone) {
+      $('#btn-fullscreen').hidden = true;
+    }
     $('#btn-font-minus').addEventListener('click', function () { setFontScale(fontScale - 0.15); });
     $('#btn-font-plus').addEventListener('click', function () { setFontScale(fontScale + 0.15); });
     $('#btn-link').addEventListener('click', openLink);
