@@ -391,8 +391,27 @@ body:not([data-view="talent"]) .talent-only { display: none !important; }
 .cd-overlay {
   position: fixed; inset: 0; z-index: 70;
   background: rgba(250, 251, 253, .96);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
+.cd-bar { width: min(88vw, 900px); margin-top: clamp(16px, 4vh, 40px); }
+.cd-bar-track {
+  position: relative; height: 18px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+  overflow: hidden;
+}
+.cd-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
+.cd-bar-ticks { position: absolute; inset: 0; }
+.cd-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, .9); }
+.cd-bar-labels { display: flex; position: relative; margin-top: 6px; }
+.cd-seg {
+  flex: 1; text-align: center; color: var(--muted);
+  font-weight: 700; font-size: clamp(.85rem, 2.4vw, 1.15rem);
+  font-variant-numeric: tabular-nums;
+}
+.cd-seg.on { color: var(--ink); transform: scale(1.15); }
+.cd-seg.standby-seg { font-size: clamp(.7rem, 2vw, .95rem); }
+.cd-seg.go-seg { flex: 0 0 auto; position: absolute; right: 0; transform: translateX(40%); color: var(--ok); }
+.cd-seg.go-seg.on { transform: translateX(40%) scale(1.2); }
 .cd-num {
   font-size: min(46vw, 60vh);
   font-weight: 900; line-height: 1;

@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="KIPzKanvas">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -170,6 +170,13 @@
 <!-- カウントダウンの全画面表示 -->
 <div id="cd-overlay" class="cd-overlay" hidden>
   <div id="cd-num" class="cd-num">5</div>
+  <div id="cd-bar" class="cd-bar" hidden>
+    <div class="cd-bar-track">
+      <div id="cd-bar-fill" class="cd-bar-fill"></div>
+      <div id="cd-bar-ticks" class="cd-bar-ticks"></div>
+    </div>
+    <div id="cd-bar-labels" class="cd-bar-labels"></div>
+  </div>
   <button type="button" id="cd-overlay-cancel" class="count-cancel director-only">中止</button>
 </div>
 
@@ -248,6 +255,6 @@
 <script src="firebase-config.js?v=2"></script>
 <script src="js/store.js?v=2"></script>
 <script src="js/transport.js?v=2"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>

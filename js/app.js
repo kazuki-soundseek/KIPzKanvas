@@ -87,6 +87,7 @@
   var bannerTimer = null;
   var wakeLockSentinel = null;
   var cdView = { id: null, lastNum: null, flashUntil: 0 };
+  var cdBarId = null; /* タイムバーの刻みをどのカウント用に組んだか */
   var serverInfo = null;
   var editingCueId = null;
   var pendingImage = null;
@@ -978,11 +979,39 @@
   }
 
   /* ---------- カウントダウン表示（毎フレーム時計を見て描く） ---------- */
+  /* タイムバーの刻み線とラベル（構え｜5｜4…｜1｜GO）を秒数に合わせて組む */
+  function buildCdBar(c) {
+    var units = c.seconds + 1; /* 構え1秒 + 秒数 */
+    var ticks = $('#cd-bar-ticks');
+    ticks.textContent = '';
+    for (var i = 1; i < units; i++) {
+      var t = document.createElement('div');
+      t.className = 'cd-tick';
+      t.style.left = (i / units * 100) + '%';
+      ticks.appendChild(t);
+    }
+    var labels = $('#cd-bar-labels');
+    labels.textContent = '';
+    var segs = ['構え'];
+    for (var n = c.seconds; n >= 1; n--) segs.push(String(n));
+    segs.forEach(function (s, idx) {
+      var d = document.createElement('span');
+      d.className = 'cd-seg' + (idx === 0 ? ' standby-seg' : '');
+      d.textContent = s;
+      labels.appendChild(d);
+    });
+    var go = document.createElement('span');
+    go.className = 'cd-seg go-seg';
+    go.textContent = 'GO';
+    labels.appendChild(go);
+  }
+
   function renderCountdownFrame() {
     var overlay = $('#cd-overlay'), numEl = $('#cd-num');
     var now = serverNow();
     var c = roomState.countdown;
     var show = false, text = '', cls = '';
+    var barActive = false, barIdx = 0;
 
     if (c && !c.canceled) {
       var end = c.startAt + c.seconds * 1000;
@@ -993,11 +1022,15 @@
           /* 開始前の「構え」: 数字を薄く出すだけ。音も鳴らさない */
           text = String(c.seconds);
           cls = 'count standby';
+          barActive = true;
+          barIdx = 0;
           if (cdView.id !== c.id) { cdView.id = c.id; cdView.lastNum = null; }
         } else if (remain > 0) {
           var num = Math.min(c.seconds, Math.ceil(remain / 1000));
           text = String(num);
           cls = 'count';
+          barActive = true;
+          barIdx = c.seconds - num + 1;
           if (cdView.id !== c.id || cdView.lastNum !== num) {
             cdView.id = c.id;
             cdView.lastNum = num;
@@ -1007,6 +1040,8 @@
         } else {
           text = 'GO';
           cls = 'go';
+          barActive = true;
+          barIdx = c.seconds + 1;
           if (cdView.id === c.id && cdView.lastNum !== 0) {
             cdView.lastNum = 0;
             goSound();
@@ -1033,6 +1068,20 @@
     if (show) {
       if (numEl.textContent !== text) numEl.textContent = text;
       numEl.className = 'cd-num ' + cls + (numEl.classList.contains('pulse') ? ' pulse' : '');
+    }
+
+    /* GOまでのタイムバー（構え1秒も含めた全体を左→右に進む） */
+    var bar = $('#cd-bar');
+    if (barActive && c) {
+      if (cdBarId !== c.id) { buildCdBar(c); cdBarId = c.id; }
+      var total = (c.seconds + 1) * 1000;
+      var pct = Math.max(0, Math.min(100, (now - (c.startAt - 1000)) / total * 100));
+      $('#cd-bar-fill').style.width = pct + '%';
+      var labels = $('#cd-bar-labels').children;
+      for (var li = 0; li < labels.length; li++) labels[li].classList.toggle('on', li === barIdx);
+      bar.hidden = false;
+    } else {
+      bar.hidden = true;
     }
   }
   function pulse(el) {
