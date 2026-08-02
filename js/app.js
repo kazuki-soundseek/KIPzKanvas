@@ -442,6 +442,26 @@
     });
   }
 
+  /* 画像を端末にファイルとして保存する（どの役割からでも使える） */
+  function downloadImage(imgId, ts) {
+    transport.imageSrc(imgId).then(function (src) {
+      return fetch(src).then(function (r) { return r.blob(); });
+    }).then(function (blob) {
+      var d = new Date(ts || Date.now());
+      var name = 'kipzkanvas_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds()) + '.jpg';
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    }).catch(function () {
+      alert('保存できませんでした。画像を長押し（または右クリック）して保存する方法もお試しください。');
+    });
+  }
+
   function loadImageInto(imgEl, imgId) {
     if (!imgId) return;
     if (imgSrcCache[imgId]) {
@@ -680,6 +700,8 @@
     var cueBox = $('#cue-box'), cueText = $('#cue-text'), cueImg = $('#cue-img'), cueUrl = $('#cue-url'), meta = $('#cue-meta');
     cueBox.classList.remove('c-normal', 'c-warn', 'c-urgent', 'canceled', 'empty');
     cueText.hidden = false; cueImg.hidden = true; cueUrl.hidden = true;
+    var cueSave = $('#cue-save');
+    cueSave.hidden = true;
     var kind = lc ? cueKind(lc) : 'text';
     if (!lc) {
       cueText.textContent = '指示待ち';
@@ -691,6 +713,8 @@
         cueText.hidden = true;
         cueImg.hidden = false;
         loadImageInto(cueImg, lc.imgId);
+        cueSave.hidden = false;
+        cueSave.onclick = function () { downloadImage(lc.imgId, lc.ts); };
       } else if (kind === 'url' && !lc.canceled) {
         cueText.hidden = true;
         cueUrl.hidden = false;
@@ -708,6 +732,21 @@
         meta.textContent = fmtTime(lc.ts) + '　' + ((lc.from && lc.from.name) || '') + '　' + colorLabel(lc.color) + (kind === 'image' ? '　' + (lc.text || '画像') : '') + (mine ? '　✓スタンプ送信済み' : '');
       }
     }
+    /* 1つ前の指示バー（現地側）: 前の指示を確認しつつ、タップで履歴を開ける */
+    var list = cueList();
+    var prev = list.length > 1 ? list[list.length - 2] : null;
+    var pcue = $('#prev-cue');
+    if (!prev) {
+      pcue.hidden = true;
+    } else {
+      pcue.hidden = false;
+      pcue.className = 'prev-cue c-' + (prev.color || 'normal') + (prev.canceled ? ' canceled' : '');
+      $('#prev-time').textContent = fmtTime(prev.ts);
+      var pvt = $('#prev-text');
+      if (prev.imgId) pvt.textContent = prev.text || '📷 画像';
+      else renderSegmentsInto(pvt, cueSegs(prev), false);
+    }
+
     if (me.role === 'talent' && (!lc || lc.canceled || kind === 'text')) fitText();
 
     /* スタンプボタン（画面に出ている指示が有効なときだけ押せる） */
@@ -720,7 +759,7 @@
     ngB.classList.toggle('sent', !!(myAck && myAck.stamp === 'ng'));
 
     /* 東京側のプレビュー */
-    var pt = $('#d-preview-text'), pimg = $('#d-preview-img'), pa = $('#d-preview-acks'), pc = $('#d-preview-cancel'), pe = $('#d-preview-edit'), pd = $('#d-preview-draw');
+    var pt = $('#d-preview-text'), pimg = $('#d-preview-img'), pa = $('#d-preview-acks'), pc = $('#d-preview-cancel'), pe = $('#d-preview-edit'), pd = $('#d-preview-draw'), ps = $('#d-preview-save');
     pt.classList.remove('c-normal', 'c-warn', 'c-urgent', 'canceled', 'muted');
     pa.textContent = '';
     pimg.hidden = true;
@@ -730,6 +769,7 @@
       pc.hidden = true;
       pe.hidden = true;
       pd.hidden = true;
+      ps.hidden = true;
     } else {
       if (kind === 'image') {
         pt.textContent = '📷 画像';
@@ -744,11 +784,15 @@
         pc.hidden = true;
         pe.hidden = true;
         pd.hidden = true;
+        ps.hidden = kind !== 'image';
+        if (kind === 'image') ps.onclick = function () { downloadImage(lc.imgId, lc.ts); };
       } else {
         pc.hidden = false;
         pc.onclick = function () { dispatch({ t: 'cancelCue', id: lc.id }); };
         pe.hidden = (kind === 'image');
         pe.onclick = function () { startEditing(lc); };
+        ps.hidden = kind !== 'image';
+        if (kind === 'image') ps.onclick = function () { downloadImage(lc.imgId, lc.ts); };
         pd.hidden = false;
         pd.onclick = function () {
           if (kind === 'image') {
@@ -809,9 +853,9 @@
       body.appendChild(chips);
       li.appendChild(t);
       li.appendChild(body);
+      var actions = document.createElement('div');
+      actions.className = 'h-actions';
       if (isDirector) {
-        var actions = document.createElement('div');
-        actions.className = 'h-actions';
         if (!c.canceled) {
           var cb = document.createElement('button');
           cb.type = 'button';
@@ -828,8 +872,16 @@
           dispatch({ t: 'cue', cue: baseCue({ segments: c.segments || null, text: c.text, url: c.url || null, imgId: c.imgId || null, imgW: c.imgW || 0, imgH: c.imgH || 0, color: c.color }) });
         };
         actions.appendChild(rb);
-        li.appendChild(actions);
       }
+      if (c.imgId) {
+        var sb = document.createElement('button');
+        sb.type = 'button';
+        sb.className = 'ghost small';
+        sb.textContent = '💾 保存';
+        sb.onclick = function () { downloadImage(c.imgId, c.ts); };
+        actions.appendChild(sb);
+      }
+      if (actions.childNodes.length) li.appendChild(actions);
       listEl.appendChild(li);
     });
   }
@@ -1048,7 +1100,7 @@
   function showModeInfo() {
     var el = $('#mode-info');
     if (window.FIREBASE_CONFIG) {
-      el.textContent = '本番モード：インターネット越しに使えます';
+      el.hidden = true; /* 本番では余計な説明を出さない */
       return;
     }
     fetch('/api/info').then(function (r) { return r.json(); }).then(function (info) {
@@ -1096,6 +1148,10 @@
     $('#btn-link').addEventListener('click', openLink);
     $('#btn-settings').addEventListener('click', openSettings);
     $('#btn-history').addEventListener('click', function () {
+      buildHistory($('#talent-history-list'), false);
+      openModal('talent-history-modal');
+    });
+    $('#prev-cue').addEventListener('click', function () {
       buildHistory($('#talent-history-list'), false);
       openModal('talent-history-modal');
     });
