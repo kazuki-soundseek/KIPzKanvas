@@ -97,6 +97,10 @@
   var drawCur = null;
   var drawPen = { color: '#171a20', marker: false, thick: false };
   var DRAW_W = 1280, DRAW_H = 720;
+  var DRAW_PAD = 60;
+  var drawBg = null;        /* 下地: null | {type:'text', segments, text} | {type:'image', img} */
+  var drawSource = 'blank'; /* どこから開いたか: blank | compose | pending | cue */
+  var DRAW_FONT = '-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", "Meiryo", sans-serif';
 
   function serverNow() { return transport ? transport.serverNow() : Date.now(); }
 
@@ -494,8 +498,83 @@
     drawCtx.stroke();
     drawCtx.restore();
   }
+  function paintImageBg(img) {
+    var scale = Math.min(DRAW_W / img.width, DRAW_H / img.height);
+    var w = img.width * scale, h = img.height * scale;
+    drawCtx.drawImage(img, (DRAW_W - w) / 2, (DRAW_H - h) / 2, w, h);
+  }
+
+  /* 下地テキストをキャンバス幅に収まる最大サイズで折り返しレイアウトする */
+  function layoutCanvasText(segments) {
+    var chars = [];
+    (segments || []).forEach(function (s) {
+      String(s.text).split('').forEach(function (ch) { chars.push({ ch: ch, mark: s.mark }); });
+    });
+    if (!chars.length) return null;
+    var maxW = DRAW_W - DRAW_PAD * 2, maxH = DRAW_H - DRAW_PAD * 2;
+    function tryFs(fs) {
+      drawCtx.font = '900 ' + fs + 'px ' + DRAW_FONT;
+      var lines = [[]], widths = [], w = 0;
+      for (var i = 0; i < chars.length; i++) {
+        var c = chars[i];
+        if (c.ch === '\n') { widths.push(w); lines.push([]); w = 0; continue; }
+        var cw = drawCtx.measureText(c.ch).width;
+        if (w + cw > maxW && lines[lines.length - 1].length) { widths.push(w); lines.push([]); w = 0; }
+        lines[lines.length - 1].push({ ch: c.ch, mark: c.mark, w: cw });
+        w += cw;
+      }
+      widths.push(w);
+      var lh = fs * 1.3;
+      if (lines.length * lh > maxH) return null;
+      for (var j = 0; j < widths.length; j++) { if (widths[j] > maxW) return null; }
+      return { lines: lines, widths: widths, fs: fs, lh: lh };
+    }
+    var lo = 16, hi = 320, best = null;
+    for (var k = 0; k < 10; k++) {
+      var mid = Math.floor((lo + hi) / 2);
+      var r = tryFs(mid);
+      if (r) { best = r; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return best || tryFs(16);
+  }
+
+  function paintTextBg(segments) {
+    var l = layoutCanvasText(segments);
+    if (!l) return;
+    drawCtx.save();
+    drawCtx.font = '900 ' + l.fs + 'px ' + DRAW_FONT;
+    drawCtx.textBaseline = 'middle';
+    var y0 = (DRAW_H - l.lines.length * l.lh) / 2;
+    l.lines.forEach(function (line, i) {
+      var x0 = (DRAW_W - l.widths[i]) / 2;
+      var yTop = y0 + i * l.lh;
+      var yMid = yTop + l.lh / 2;
+      var x = x0;
+      line.forEach(function (c) {
+        if (c.mark) {
+          drawCtx.fillStyle = '#fde047';
+          drawCtx.fillRect(x - 2, yTop + l.lh * 0.06, c.w + 4, l.lh * 0.88);
+        }
+        x += c.w;
+      });
+      x = x0;
+      drawCtx.fillStyle = '#171a20';
+      line.forEach(function (c) {
+        drawCtx.fillText(c.ch, x, yMid);
+        x += c.w;
+      });
+    });
+    drawCtx.restore();
+  }
+
   function repaintDraw() {
-    drawCtx.clearRect(0, 0, DRAW_W, DRAW_H);
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = 'source-over';
+    drawCtx.fillStyle = '#ffffff';
+    drawCtx.fillRect(0, 0, DRAW_W, DRAW_H);
+    drawCtx.restore();
+    if (drawBg && drawBg.type === 'image') paintImageBg(drawBg.img);
+    if (drawBg && drawBg.type === 'text') paintTextBg(drawBg.segments);
     drawStrokes.forEach(paintStroke);
   }
   function updatePenButtons() {
@@ -508,29 +587,34 @@
       b.classList.toggle('selected', (b.dataset.penw === 'thick') === drawPen.thick);
     });
   }
-  function openDraw() {
+  function openDraw(bg, source, title) {
+    drawBg = bg || null;
+    drawSource = source || 'blank';
     drawStrokes = [];
     drawCur = null;
+    $('#draw-title').textContent = title || '手書きで送る';
     repaintDraw();
     updatePenButtons();
     openModal('draw-modal');
   }
   function sendDrawing() {
-    if (!drawStrokes.length) return;
+    if (!drawStrokes.length && !drawBg) return;
     var ex = document.createElement('canvas');
     ex.width = DRAW_W;
     ex.height = DRAW_H;
-    var c = ex.getContext('2d');
-    c.fillStyle = '#ffffff';
-    c.fillRect(0, 0, DRAW_W, DRAW_H);
-    c.drawImage(drawCv, 0, 0);
+    ex.getContext('2d').drawImage(drawCv, 0, 0);
     var dataUrl = ex.toDataURL('image/jpeg', 0.85);
+    var label = '✍️ 手書き';
+    if (drawBg && drawBg.type === 'text' && drawBg.text) label = drawBg.text;
+    if (drawBg && drawBg.type === 'image') label = '📷 写真＋書き込み';
+    if (drawSource === 'compose') { composeEl.textContent = ''; stopEditing(); }
+    if (drawSource === 'pending') { pendingImage = null; $('#img-pending').hidden = true; }
     closeAllModals();
     transport.uploadImage(dataUrl, DRAW_W, DRAW_H).then(function (imgId) {
       imgSrcCache[imgId] = dataUrl;
-      dispatch({ t: 'cue', cue: baseCue({ imgId: imgId, imgW: DRAW_W, imgH: DRAW_H, text: '✍️ 手書き', color: selectedColor() }) });
+      dispatch({ t: 'cue', cue: baseCue({ imgId: imgId, imgW: DRAW_W, imgH: DRAW_H, text: label, color: selectedColor() }) });
     }).catch(function () {
-      alert('手書きを送れませんでした。通信を確認してもう一度お試しください。');
+      alert('送れませんでした。通信を確認してもう一度お試しください。');
     });
   }
 
@@ -634,7 +718,7 @@
     ngB.classList.toggle('sent', !!(myAck && myAck.stamp === 'ng'));
 
     /* 東京側のプレビュー */
-    var pt = $('#d-preview-text'), pimg = $('#d-preview-img'), pa = $('#d-preview-acks'), pc = $('#d-preview-cancel'), pe = $('#d-preview-edit');
+    var pt = $('#d-preview-text'), pimg = $('#d-preview-img'), pa = $('#d-preview-acks'), pc = $('#d-preview-cancel'), pe = $('#d-preview-edit'), pd = $('#d-preview-draw');
     pt.classList.remove('c-normal', 'c-warn', 'c-urgent', 'canceled', 'muted');
     pa.textContent = '';
     pimg.hidden = true;
@@ -643,6 +727,7 @@
       pt.classList.add('muted');
       pc.hidden = true;
       pe.hidden = true;
+      pd.hidden = true;
     } else {
       if (kind === 'image') {
         pt.textContent = '📷 画像';
@@ -656,11 +741,24 @@
         pt.classList.add('canceled');
         pc.hidden = true;
         pe.hidden = true;
+        pd.hidden = true;
       } else {
         pc.hidden = false;
         pc.onclick = function () { dispatch({ t: 'cancelCue', id: lc.id }); };
         pe.hidden = (kind === 'image');
         pe.onclick = function () { startEditing(lc); };
+        pd.hidden = false;
+        pd.onclick = function () {
+          if (kind === 'image') {
+            transport.imageSrc(lc.imgId).then(function (src) {
+              var img = new Image();
+              img.onload = function () { openDraw({ type: 'image', img: img }, 'cue', '写真に書き込んで送る'); };
+              img.src = src;
+            }).catch(function () {});
+          } else {
+            openDraw({ type: 'text', segments: cueSegs(lc), text: lc.text }, 'cue', 'テキストに書き込んで送る');
+          }
+        };
       }
       appendAckChips(pa, lc);
     }
@@ -693,6 +791,12 @@
         th.alt = '画像';
         loadImageInto(th, c.imgId);
         tx.appendChild(th);
+        if (c.text && !/^(📷|✍️)/.test(c.text)) {
+          var cap = document.createElement('div');
+          cap.className = 'h-caption';
+          cap.textContent = c.text;
+          tx.appendChild(cap);
+        }
       } else {
         renderSegmentsInto(tx, cueSegs(c), true);
       }
@@ -1042,7 +1146,18 @@
     /* 手書き */
     drawCv = $('#draw-canvas');
     drawCtx = drawCv.getContext('2d');
-    $('#btn-draw').addEventListener('click', openDraw);
+    $('#btn-draw').addEventListener('click', function () {
+      var segs = composeSegments();
+      var text = segsText(segs);
+      if (text.trim()) openDraw({ type: 'text', segments: segs, text: text }, 'compose', 'テキストに書き込んで送る');
+      else openDraw(null, 'blank', '手書きで送る');
+    });
+    $('#img-annotate').addEventListener('click', function () {
+      if (!pendingImage) return;
+      var img = new Image();
+      img.onload = function () { openDraw({ type: 'image', img: img }, 'pending', '写真に書き込んで送る'); };
+      img.src = pendingImage.dataUrl;
+    });
     $('#draw-send').addEventListener('click', sendDrawing);
     $('#draw-undo').addEventListener('click', function () { drawStrokes.pop(); repaintDraw(); });
     $('#draw-clear').addEventListener('click', function () { drawStrokes = []; repaintDraw(); });
