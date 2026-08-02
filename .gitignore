@@ -1,5 +1,7 @@
 node_modules/
 .claude/
+.firebase/
+firebase-debug.log
 .firebaserc
 desktop.ini
 Thumbs.db

@@ -5,10 +5,14 @@
       "firebase.json",
       "database.rules.json",
       ".firebaserc",
+      ".firebaserc.example",
+      ".gitignore",
       "**/.*",
+      "**/.*/**",
       "**/node_modules/**",
       "README.md",
-      "dev-server.js"
+      "dev-server.js",
+      "*.log"
     ]
   },
   "database": {
