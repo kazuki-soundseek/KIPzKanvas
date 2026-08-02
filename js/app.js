@@ -95,7 +95,7 @@
   var drawCv = null, drawCtx = null;
   var drawStrokes = [];
   var drawCur = null;
-  var drawPen = { color: '#171a20', marker: false, thick: false };
+  var drawPen = { color: '#171a20', marker: false, size: 'medium' };
   var DRAW_W = 1280, DRAW_H = 720;
   var DRAW_PAD = 60;
   var drawBg = null;        /* 下地: null | {type:'text', segments, text} | {type:'image', img} */
@@ -461,6 +461,8 @@
 
   /* ---------- 手書き ---------- */
   var PEN_COLORS = { black: '#171a20', red: '#dc2626', blue: '#2563eb' };
+  var PEN_W = { small: 8, medium: 16, large: 28 };
+  var MARKER_W = { small: 34, medium: 52, large: 76 };
 
   function drawPos(e) {
     var r = drawCv.getBoundingClientRect();
@@ -475,12 +477,12 @@
       /* 蛍光ペン: 半透明の黄色を「乗算」で重ねると、下の文字が透けて見える */
       drawCtx.strokeStyle = 'rgba(250, 204, 21, .55)';
       drawCtx.fillStyle = 'rgba(250, 204, 21, .55)';
-      drawCtx.lineWidth = s.thick ? 46 : 30;
+      drawCtx.lineWidth = MARKER_W[s.size] || MARKER_W.medium;
       drawCtx.globalCompositeOperation = 'multiply';
     } else {
       drawCtx.strokeStyle = s.color;
       drawCtx.fillStyle = s.color;
-      drawCtx.lineWidth = s.thick ? 14 : 6;
+      drawCtx.lineWidth = PEN_W[s.size] || PEN_W.medium;
     }
     if (p.length === 1) {
       drawCtx.beginPath();
@@ -584,7 +586,7 @@
       b.classList.toggle('selected', sel);
     });
     $all('.pen-btn[data-penw]').forEach(function (b) {
-      b.classList.toggle('selected', (b.dataset.penw === 'thick') === drawPen.thick);
+      b.classList.toggle('selected', b.dataset.penw === drawPen.size);
     });
   }
   function openDraw(bg, source, title) {
@@ -1169,12 +1171,12 @@
       });
     });
     $all('.pen-btn[data-penw]').forEach(function (b) {
-      b.addEventListener('click', function () { drawPen.thick = b.dataset.penw === 'thick'; updatePenButtons(); });
+      b.addEventListener('click', function () { drawPen.size = b.dataset.penw; updatePenButtons(); });
     });
     drawCv.addEventListener('pointerdown', function (e) {
       e.preventDefault();
       try { drawCv.setPointerCapture(e.pointerId); } catch (err) {}
-      drawCur = { points: [drawPos(e)], color: drawPen.color, marker: drawPen.marker, thick: drawPen.thick };
+      drawCur = { points: [drawPos(e)], color: drawPen.color, marker: drawPen.marker, size: drawPen.size };
       drawStrokes.push(drawCur);
       repaintDraw();
     });
