@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="KIPzKanvas">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -122,6 +122,11 @@
           <button type="button" id="d-preview-cancel" class="ghost small danger" hidden>この指示を取消</button>
         </div>
       </div>
+      <div id="d-talent-msg" class="d-talent-msg" hidden>
+        <span class="chip chip-ok">現地</span>
+        <span id="d-talent-msg-time" class="prev-time"></span>
+        <span id="d-talent-msg-text" class="d-talent-msg-text"></span>
+      </div>
     </div>
     <div class="panel grow">
       <h2 class="panel-title">履歴と受領状況</h2>
@@ -151,6 +156,10 @@
     <span id="prev-text" class="prev-text"></span>
     <span class="prev-open">履歴 ›</span>
   </button>
+  <form id="reply-form" class="reply-bar">
+    <input id="reply-text" type="text" placeholder="東京へメッセージ…" autocomplete="off" enterkeyhint="send">
+    <button type="submit" id="reply-send-btn" class="primary reply-send">送信</button>
+  </form>
   <div class="stamp-bar">
     <button type="button" id="stamp-ok" class="stamp ok" disabled><span class="stamp-emoji">👍</span> OK・了解</button>
     <button type="button" id="stamp-ng" class="stamp ng" disabled><span class="stamp-emoji">✋</span> できない</button>
@@ -238,6 +247,6 @@
 <script src="firebase-config.js?v=2"></script>
 <script src="js/store.js?v=2"></script>
 <script src="js/transport.js?v=2"></script>
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

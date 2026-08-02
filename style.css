@@ -363,6 +363,18 @@ body:not([data-view="talent"]) .talent-only { display: none !important; }
 .prev-cue.canceled .prev-text { text-decoration: line-through; color: var(--muted); }
 .prev-open { color: var(--accent); font-size: .85rem; font-weight: 700; flex-shrink: 0; }
 
+.reply-bar { display: flex; gap: var(--s2); }
+#reply-text { border-radius: 999px; min-height: 42px; padding: var(--s2) var(--s4); font-size: 1rem; }
+.reply-send { border-radius: 999px; min-height: 42px; padding: var(--s2) var(--s4); flex-shrink: 0; }
+
+.d-talent-msg {
+  display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
+  margin-top: var(--s3); padding: var(--s2) var(--s3);
+  background: var(--ok-weak); border-radius: var(--r-md);
+}
+.d-talent-msg-text { font-weight: 700; overflow-wrap: anywhere; }
+.h-item.from-talent { border-left-color: var(--ok); background: var(--ok-weak); }
+
 .stamp-bar { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--s3); height: clamp(76px, 14vh, 128px); }
 .stamp { font-size: clamp(1.2rem, 3.5vw, 1.7rem); font-weight: 900; border-radius: var(--r-lg); border-width: 3px; background: var(--panel); }
 .stamp-emoji { font-size: 1.2em; }

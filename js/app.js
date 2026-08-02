@@ -108,12 +108,15 @@
     return Object.keys(roomState.cues).map(function (k) { return roomState.cues[k]; })
       .sort(function (a, b) { return a.ts - b.ts; });
   }
+  /* 現地発の簡易メッセージ。東京からの指示と違い、現地の大画面には表示しない */
+  function isTalentMsg(c) { return (c.fromRole || 'director') === 'talent'; }
+  function directorCues() { return cueList().filter(function (c) { return !isTalentMsg(c); }); }
   function latestCue() {
-    var l = cueList();
+    var l = directorCues();
     return l.length ? l[l.length - 1] : null;
   }
   function latestActiveCue() {
-    var l = cueList().filter(function (c) { return !c.canceled; });
+    var l = directorCues().filter(function (c) { return !c.canceled; });
     return l.length ? l[l.length - 1] : null;
   }
   function activeCountdown() {
@@ -134,6 +137,7 @@
   function baseCue(extra) {
     return Object.assign({
       id: uid(), ts: serverNow(), from: { id: me.id, name: me.name },
+      fromRole: me.role,
       color: 'normal', canceled: false, acks: {},
       segments: null, text: '', url: null, imgId: null, imgW: 0, imgH: 0
     }, extra);
@@ -233,23 +237,23 @@
   /* ---------- 通信イベント ---------- */
   function onState(s) {
     roomState = s;
+    var all = cueList();
+    var lastAny = all.length ? all[all.length - 1] : null;
     var lc = latestCue();
     var isFirst = !gotFirstState;
     gotFirstState = true;
-    var isNew = lc && lc.id !== latestSeenCueId;
-    if (lc) latestSeenCueId = lc.id;
+    var isNew = lastAny && lastAny.id !== latestSeenCueId;
+    if (lastAny) latestSeenCueId = lastAny.id;
     var sig = lc ? (lc.id + '|' + (lc.text || '') + '|' + JSON.stringify(lc.segments || null)) : '';
     renderAll();
-    if (!isFirst && lc && lc.from && lc.from.id !== me.id && !lc.canceled) {
-      if (isNew) {
-        playCueSound(lc.color);
-        vibrate(lc.color === 'urgent' ? [120, 80, 120, 80, 240] : [160]);
-        flashCueArea();
-      } else if (lastCueSig && sig !== lastCueSig) {
-        /* 同じ指示の文言・マーカーが書き換わった（マーカー編集） */
-        pip();
-        flashCueArea();
-      }
+    if (!isFirst && isNew && lastAny.from && lastAny.from.id !== me.id && !lastAny.canceled) {
+      playCueSound(lastAny.color);
+      vibrate(lastAny.color === 'urgent' ? [120, 80, 120, 80, 240] : [160]);
+      if (!isTalentMsg(lastAny)) flashCueArea();
+    } else if (!isFirst && !isNew && lc && lc.from && lc.from.id !== me.id && !lc.canceled && lastCueSig && sig !== lastCueSig) {
+      /* 同じ指示の文言・マーカーが書き換わった（マーカー編集） */
+      pip();
+      flashCueArea();
     }
     lastCueSig = sig;
   }
@@ -645,6 +649,7 @@
     if (!joined) return;
     renderPresence();
     renderCue();
+    renderTalentMsg();
     buildHistory($('#history-list'), me.role === 'director');
     if (me.role === 'talent' && !$('#talent-history-modal').hidden) buildHistory($('#talent-history-list'), false);
     renderPresets();
@@ -733,7 +738,7 @@
       }
     }
     /* 1つ前の指示バー（現地側）: 前の指示を確認しつつ、タップで履歴を開ける */
-    var list = cueList();
+    var list = directorCues();
     var prev = list.length > 1 ? list[list.length - 2] : null;
     var pcue = $('#prev-cue');
     if (!prev) {
@@ -810,6 +815,18 @@
     }
   }
 
+  /* 東京側: 現地からの最新メッセージ表示 */
+  function renderTalentMsg() {
+    var box = $('#d-talent-msg');
+    if (!box) return;
+    var msgs = cueList().filter(isTalentMsg);
+    var m = msgs.length ? msgs[msgs.length - 1] : null;
+    if (!m) { box.hidden = true; return; }
+    box.hidden = false;
+    $('#d-talent-msg-time').textContent = fmtTime(m.ts) + '　' + ((m.from && m.from.name) || '');
+    $('#d-talent-msg-text').textContent = m.text;
+  }
+
   function buildHistory(listEl, isDirector) {
     if (!listEl) return;
     listEl.textContent = '';
@@ -823,7 +840,7 @@
     }
     list.forEach(function (c) {
       var li = document.createElement('li');
-      li.className = 'h-item c-' + (c.color || 'normal') + (c.canceled ? ' canceled' : '');
+      li.className = 'h-item c-' + (c.color || 'normal') + (c.canceled ? ' canceled' : '') + (isTalentMsg(c) ? ' from-talent' : '');
       var t = document.createElement('span');
       t.className = 'h-time';
       t.textContent = fmtTime(c.ts);
@@ -848,14 +865,18 @@
       }
       var chips = document.createElement('div');
       chips.className = 'h-chips';
-      appendAckChips(chips, c);
+      if (isTalentMsg(c)) {
+        chips.appendChild(chipEl('現地 ' + ((c.from && c.from.name) || ''), 'chip-ok'));
+      } else {
+        appendAckChips(chips, c);
+      }
       body.appendChild(tx);
       body.appendChild(chips);
       li.appendChild(t);
       li.appendChild(body);
       var actions = document.createElement('div');
       actions.className = 'h-actions';
-      if (isDirector) {
+      if (isDirector && !isTalentMsg(c)) {
         if (!c.canceled) {
           var cb = document.createElement('button');
           cb.type = 'button';
@@ -1154,6 +1175,17 @@
     $('#prev-cue').addEventListener('click', function () {
       buildHistory($('#talent-history-list'), false);
       openModal('talent-history-modal');
+    });
+    $('#reply-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var inp = $('#reply-text');
+      var text = inp.value.trim();
+      if (!text) return;
+      dispatch({ t: 'cue', cue: baseCue({ text: text, url: firstUrl(text), color: 'normal' }) });
+      inp.value = '';
+      var b = $('#reply-send-btn');
+      b.textContent = '✓';
+      setTimeout(function () { b.textContent = '送信'; }, 1200);
     });
     $('#btn-exit').addEventListener('click', function () {
       if (!confirm('退室しますか？')) return;
