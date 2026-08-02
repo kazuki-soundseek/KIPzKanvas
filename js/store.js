@@ -19,6 +19,7 @@
       presets: DEFAULT_PRESETS.map(function (p) { return { text: p.text, color: p.color }; }),
       cues: {},
       countdown: null,
+      call: null,
       members: {}
     };
   }
@@ -57,6 +58,10 @@
         break;
       case 'countdown':
         state.countdown = op.cd || null;
+        break;
+      case 'call':
+        /* 東京→現場の呼び出し（現場側で光と音の合図になる） */
+        state.call = op.call || null;
         break;
       case 'cancelCountdown':
         if (state.countdown && state.countdown.id === op.id) state.countdown.canceled = true;

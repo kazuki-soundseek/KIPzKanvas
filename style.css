@@ -215,7 +215,31 @@ body:not([data-view="talent"]) .talent-only { display: none !important; }
 .panel.grow { flex: 1; min-height: 200px; display: flex; flex-direction: column; }
 .panel-title { font-size: .82rem; font-weight: 700; color: var(--muted); letter-spacing: .05em; margin-bottom: var(--s3); }
 
-.count-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: var(--s2); }
+.count-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto auto; gap: var(--s2); }
+.call-btn {
+  background: var(--urgent); border: 2px solid var(--urgent); color: #fff;
+  font-weight: 900; min-height: 58px; padding: var(--s3) var(--s4);
+}
+@media (hover: hover) { .call-btn:hover:not(:disabled) { background: #b91c1c; } }
+.call-btn:disabled { opacity: .55; }
+
+/* 現場側の呼び出し演出（赤枠の点滅＋上部の帯） */
+.call-frame {
+  position: fixed; inset: 0; z-index: 65; pointer-events: none;
+  border: 14px solid var(--urgent);
+  animation: callframe .45s ease-in-out infinite alternate;
+}
+@keyframes callframe {
+  from { opacity: 1; }
+  to { opacity: .2; }
+}
+.call-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 66; pointer-events: none;
+  background: var(--urgent); color: #fff; text-align: center;
+  font-weight: 900; font-size: 1.3rem;
+  padding: var(--s3);
+  padding-top: calc(var(--s3) + env(safe-area-inset-top));
+}
 .count-btn { font-size: 1.2rem; font-weight: 900; padding: var(--s3); min-height: 58px; }
 .count-cancel { border: 2px solid var(--urgent); color: var(--urgent); font-weight: 900; padding: var(--s3) var(--s4); min-height: 58px; background: var(--panel); }
 @media (hover: hover) { .count-cancel:hover:not(:disabled) { background: var(--urgent); color: #fff; } }
@@ -477,7 +501,8 @@ body:not([data-view="talent"]) .talent-only { display: none !important; }
 /* ---------- 狭い画面（スマホ・iPad分割表示） ---------- */
 @media (max-width: 560px) {
   .count-row { grid-template-columns: 1fr 1fr; }
-  .count-cancel { grid-column: span 2; }
+  .count-cancel { grid-column: span 1; }
+  .call-btn { grid-column: span 1; }
   .preset-grid { grid-template-columns: 1fr; }
   .role-pick { grid-template-columns: 1fr; }
   #app-header { gap: var(--s2); }

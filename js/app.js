@@ -88,6 +88,8 @@
   var wakeLockSentinel = null;
   var cdView = { id: null, lastNum: null, flashUntil: 0 };
   var cdBarId = null; /* タイムバーの刻みをどのカウント用に組んだか */
+  var lastCallId = null;
+  var callTimer = null;
   var serverInfo = null;
   var editingCueId = null;
   var pendingImage = null;
@@ -174,7 +176,29 @@
   }
   function pip() { tone(880, 70, 0, 'sine', 0.4); }
   function goSound() { tone(1245, 450, 0, 'sine', 0.45); }
+  function callSound() {
+    /* 呼び出し: 2回鳴らして気づかせる */
+    [0, 900].forEach(function (base) {
+      tone(880, 150, base, 'square', 0.5);
+      tone(880, 150, base + 220, 'square', 0.5);
+      tone(1175, 320, base + 440, 'square', 0.5);
+    });
+  }
   function vibrate(pat) { if (navigator.vibrate) { try { navigator.vibrate(pat); } catch (e) {} } }
+
+  /* ---------- 呼び出し（東京→現場） ---------- */
+  function triggerCallEffect() {
+    var frame = $('#call-frame'), banner = $('#call-banner');
+    frame.hidden = false;
+    banner.hidden = false;
+    callSound();
+    vibrate([200, 100, 200, 100, 400]);
+    clearTimeout(callTimer);
+    callTimer = setTimeout(function () {
+      frame.hidden = true;
+      banner.hidden = true;
+    }, 4000);
+  }
 
   /* ---------- 全画面表示 ---------- */
   function isFullscreen() {
@@ -282,6 +306,15 @@
       flashCueArea();
     }
     lastCueSig = sig;
+
+    /* 呼び出しの検知（現場側だけ光る・鳴る） */
+    var call = roomState.call;
+    if (isFirst) {
+      lastCallId = call ? call.id : null;
+    } else if (call && call.id !== lastCallId) {
+      lastCallId = call.id;
+      if (me.role === 'talent' && call.from && call.from.id !== me.id) triggerCallEffect();
+    }
   }
 
   function onConn(ok) {
@@ -1285,6 +1318,17 @@
     });
     $('#btn-cd-cancel').addEventListener('click', cancelCountdown);
     $('#cd-overlay-cancel').addEventListener('click', cancelCountdown);
+
+    $('#btn-call').addEventListener('click', function () {
+      var b = $('#btn-call');
+      dispatch({ t: 'call', call: { id: uid(), ts: serverNow(), from: { id: me.id, name: me.name } } });
+      b.disabled = true;
+      b.textContent = '📣 呼び出し中…';
+      setTimeout(function () {
+        b.disabled = false;
+        b.textContent = '📣 呼び出し';
+      }, 2000);
+    });
 
     /* 自由入力（マーカー対応） */
     $('#btn-send').addEventListener('click', sendCompose);

@@ -89,6 +89,7 @@
         presets: (Array.isArray(s.presets) && s.presets.length) ? s.presets : window.KanpeStore.DEFAULT_PRESETS,
         cues: s.cues || {},
         countdown: s.countdown || null,
+        call: s.call || null,
         members: s.members || {}
       };
       Object.keys(state.cues).forEach(function (id) {
@@ -147,6 +148,7 @@
         case 'presets': dbMod.set(r('presets'), op.presets); break;
         case 'countdown': dbMod.set(r('countdown'), op.cd); break;
         case 'cancelCountdown': dbMod.update(r('countdown'), { canceled: true }); break;
+        case 'call': dbMod.set(r('call'), op.call); break;
         case 'member': dbMod.update(r('members/' + op.member.id), op.member); break;
         case 'clearCues':
           dbMod.update(dbMod.ref(db, roomPath), { cues: null, countdown: null });

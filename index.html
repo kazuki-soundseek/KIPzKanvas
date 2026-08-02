@@ -10,11 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="KIPzKanvas">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
 <div id="conn-banner" hidden></div>
+<div id="call-frame" class="call-frame" hidden></div>
+<div id="call-banner" class="call-banner" hidden>📣 東京から呼び出し</div>
 
 <!-- 入室画面 -->
 <main id="join-screen">
@@ -66,12 +68,13 @@
 <main id="director-view">
   <section class="d-col">
     <div class="panel">
-      <h2 class="panel-title">カウントダウン（全員の画面に大きく出ます）</h2>
+      <h2 class="panel-title">カウントダウン（全員の画面に大きく出ます）・呼び出し</h2>
       <div class="count-row">
         <button type="button" class="count-btn" data-sec="10">10秒</button>
         <button type="button" class="count-btn" data-sec="5">5秒</button>
         <button type="button" class="count-btn" data-sec="3">3秒</button>
         <button type="button" id="btn-cd-cancel" class="count-cancel" disabled>中止</button>
+        <button type="button" id="btn-call" class="call-btn" title="現場の画面を光らせて音で呼びかける">📣 呼び出し</button>
       </div>
     </div>
     <div class="panel grow">
@@ -253,8 +256,8 @@
 
 <script src="js/qrcode.js?v=2"></script>
 <script src="firebase-config.js?v=2"></script>
-<script src="js/store.js?v=2"></script>
-<script src="js/transport.js?v=2"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/store.js?v=7"></script>
+<script src="js/transport.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
