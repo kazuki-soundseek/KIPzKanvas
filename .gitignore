@@ -1,0 +1,5 @@
+node_modules/
+.claude/
+.firebaserc
+desktop.ini
+Thumbs.db

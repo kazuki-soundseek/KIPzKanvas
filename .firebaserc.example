@@ -1,0 +1,5 @@
+{
+  "projects": {
+    "default": "ここにFirebaseのプロジェクトIDを入れて、ファイル名を .firebaserc に変える"
+  }
+}

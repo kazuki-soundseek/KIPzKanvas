@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>KIPzKanvas</title>
+<meta name="theme-color" content="#f6f7f9">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KIPzKanvas">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="conn-banner" hidden></div>
+
+<!-- 入室画面 -->
+<main id="join-screen">
+  <h1 class="brand">KIPz<span class="brand-accent">Kanvas</span></h1>
+  <p class="tagline">中継スイッチャー ⇄ 現地のカンペ共有</p>
+  <form id="join-form" class="join-card">
+    <label>部屋コード
+      <input id="join-room" type="text" autocomplete="off" autocapitalize="off" placeholder="例: race-0802" enterkeyhint="done">
+    </label>
+    <label>名前（相手に見える表示名）
+      <input id="join-name" type="text" autocomplete="off" placeholder="例: 実況A ／ 東京サブ" enterkeyhint="done">
+    </label>
+    <div class="role-pick" role="group" aria-label="役割の選択">
+      <button type="button" id="role-director" class="role-btn">
+        <span class="role-title">東京</span>
+        <span class="role-sub">指示を出す側（スイッチャー・D）</span>
+      </button>
+      <button type="button" id="role-talent" class="role-btn">
+        <span class="role-title">現地</span>
+        <span class="role-sub">指示を受ける側（実況・リポーター）</span>
+      </button>
+    </div>
+    <button type="submit" id="join-btn" class="primary big">入室する</button>
+    <p id="join-hint" class="hint" hidden></p>
+  </form>
+  <p id="mode-info" class="mode-info"></p>
+</main>
+
+<!-- 共通ヘッダー -->
+<header id="app-header">
+  <div class="hdr-left">
+    <span class="hdr-brand">KIPz<span class="brand-accent">Kanvas</span></span>
+    <span id="hdr-room" class="hdr-room"></span>
+  </div>
+  <div id="presence" class="presence"></div>
+  <div class="hdr-right">
+    <button id="btn-sound" class="icon-btn" title="通知音の入切" aria-label="通知音の入切">🔔</button>
+    <button id="btn-font-minus" class="icon-btn talent-only" aria-label="文字を小さく">A−</button>
+    <button id="btn-font-plus" class="icon-btn talent-only" aria-label="文字を大きく">A＋</button>
+    <button id="btn-link" class="icon-btn director-only">現地用リンク</button>
+    <button id="btn-settings" class="icon-btn director-only">設定</button>
+    <button id="btn-history" class="icon-btn talent-only">履歴</button>
+    <button id="btn-exit" class="icon-btn">退室</button>
+  </div>
+</header>
+
+<!-- 東京側（指示を出す） -->
+<main id="director-view">
+  <section class="d-col">
+    <div class="panel">
+      <h2 class="panel-title">カウントダウン（全員の画面に大きく出ます）</h2>
+      <div class="count-row">
+        <button type="button" class="count-btn" data-sec="10">10秒</button>
+        <button type="button" class="count-btn" data-sec="5">5秒</button>
+        <button type="button" class="count-btn" data-sec="3">3秒</button>
+        <button type="button" id="btn-cd-cancel" class="count-cancel" disabled>中止</button>
+      </div>
+    </div>
+    <div class="panel grow">
+      <h2 class="panel-title">定型の指示（押した瞬間に送信されます）</h2>
+      <div id="preset-grid" class="preset-grid"></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-title">自由入力（文字を選んで🖊でマーカー）</h2>
+      <div id="edit-badge" class="edit-badge" hidden>
+        <span>送信済みの指示を編集中 →「更新」で現地に反映</span>
+        <button type="button" id="edit-cancel" class="ghost small">新規入力に戻る</button>
+      </div>
+      <div id="compose" class="compose" contenteditable="true" data-placeholder="指示を入力（Enterで送信／Shift+Enterで改行）"></div>
+      <div class="compose-tools">
+        <button type="button" id="btn-mark" class="tool-btn" title="選択した文字にマーカー">🖊 マーカー</button>
+        <button type="button" id="btn-unmark" class="tool-btn" title="マーカーを消す">解除</button>
+        <button type="button" id="btn-image" class="tool-btn" title="画像を送る">📷 画像</button>
+        <input type="file" id="image-input" accept="image/*" hidden>
+        <button type="button" id="btn-send" class="primary send-btn">送信</button>
+      </div>
+      <div class="color-pick" id="color-pick">
+        <label><input type="radio" name="cuecolor" value="normal" checked><span>通常</span></label>
+        <label><input type="radio" name="cuecolor" value="warn"><span>注意（橙）</span></label>
+        <label><input type="radio" name="cuecolor" value="urgent"><span>緊急（赤）</span></label>
+      </div>
+      <div id="img-pending" class="img-pending" hidden>
+        <img id="img-pending-thumb" alt="送信前の画像">
+        <div class="img-pending-actions">
+          <button type="button" id="img-send" class="primary">この画像を送信</button>
+          <button type="button" id="img-discard" class="ghost">やめる</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="d-col">
+    <div class="panel">
+      <h2 class="panel-title">いま現地に出ている表示</h2>
+      <div id="d-preview" class="d-preview">
+        <div id="d-preview-text" class="d-preview-text muted">まだ指示はありません</div>
+        <img id="d-preview-img" class="d-preview-img" alt="" hidden>
+        <div class="d-preview-foot">
+          <div id="d-preview-acks"></div>
+          <span class="spacer"></span>
+          <button type="button" id="d-preview-edit" class="ghost small" hidden>🖊 マーカー編集</button>
+          <button type="button" id="d-preview-cancel" class="ghost small danger" hidden>この指示を取消</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel grow">
+      <h2 class="panel-title">履歴と受領状況</h2>
+      <ol id="history-list" class="history"></ol>
+    </div>
+  </section>
+</main>
+
+<!-- 現地側（指示を受ける） -->
+<main id="talent-view">
+  <div id="cue-box" class="cue-box empty">
+    <div class="cue-fit" id="cue-fit">
+      <div id="cue-text" class="cue-text">指示待ち</div>
+      <img id="cue-img" alt="送られてきた画像" hidden>
+      <div id="cue-url" class="cue-url" hidden>
+        <div id="cue-url-domain" class="cue-url-domain"></div>
+        <a id="cue-url-open" class="cue-url-open" target="_blank" rel="noopener">リンクを開く ↗</a>
+        <div id="cue-url-full" class="cue-url-full"></div>
+      </div>
+    </div>
+    <div id="cue-meta" class="cue-meta"></div>
+  </div>
+  <div class="stamp-bar">
+    <button type="button" id="stamp-ok" class="stamp ok" disabled><span class="stamp-emoji">👍</span> OK・了解</button>
+    <button type="button" id="stamp-ng" class="stamp ng" disabled><span class="stamp-emoji">✋</span> できない</button>
+  </div>
+</main>
+
+<!-- カウントダウンの全画面表示 -->
+<div id="cd-overlay" class="cd-overlay" hidden>
+  <div id="cd-num" class="cd-num">5</div>
+  <button type="button" id="cd-overlay-cancel" class="count-cancel director-only">中止</button>
+</div>
+
+<!-- 現地用リンク -->
+<div class="modal-backdrop" id="link-modal" hidden>
+  <div class="modal">
+    <h2>現地用のリンク</h2>
+    <p class="modal-note">現地の端末でこのURLを開くか、QRコードをカメラで読み取ってもらってください。部屋コードは入力済みの状態で開きます。</p>
+    <div id="link-qr" class="qr"></div>
+    <code id="link-url" class="link-url"></code>
+    <div class="modal-row">
+      <button type="button" id="link-copy" class="primary">URLをコピー</button>
+      <button type="button" class="ghost" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定（東京側） -->
+<div class="modal-backdrop" id="settings-modal" hidden>
+  <div class="modal">
+    <h2>定型指示の編集</h2>
+    <p class="modal-note">保存すると同じ部屋の全員のボタンが入れ替わります。<br>「==」で囲むとマーカーになります（例: <code>==30秒==で締めて</code>）。</p>
+    <div id="preset-editor"></div>
+    <div class="modal-row">
+      <button type="button" id="preset-add" class="ghost">＋ 行を追加</button>
+      <button type="button" id="preset-default" class="ghost">初期セットに戻す</button>
+    </div>
+    <div class="modal-row">
+      <button type="button" id="preset-save" class="primary">保存（全員に反映）</button>
+      <button type="button" class="ghost" data-close>閉じる</button>
+    </div>
+    <hr>
+    <div class="modal-row">
+      <button type="button" id="btn-clear" class="danger ghost">履歴を全消去</button>
+    </div>
+  </div>
+</div>
+
+<!-- 履歴（現地側） -->
+<div class="modal-backdrop" id="talent-history-modal" hidden>
+  <div class="modal">
+    <h2>履歴</h2>
+    <ol id="talent-history-list" class="history"></ol>
+    <div class="modal-row">
+      <button type="button" class="ghost" data-close>閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/qrcode.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/transport.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
