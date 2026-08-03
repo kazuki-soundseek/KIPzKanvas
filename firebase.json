@@ -19,6 +19,7 @@
       "**/.*/**",
       "**/node_modules/**",
       "README.md",
+      "CLAUDE.md",
       "dev-server.js",
       "*.log"
     ]
