@@ -52,6 +52,32 @@
   }
 }
 
+/* ---------- ダークモード（端末ごとに🌙/☀️で切替） ---------- */
+body[data-theme="dark"] {
+  --paper: #12151c;
+  --panel: #1a1e27;
+  --panel-2: #232836;
+  --line: #343b4d;
+  --ink: #f2f4f9;
+  --muted: #98a1b3;
+  --accent: #6ea8ff;
+  --accent-weak: #1c2b4a;
+  --ok: #35d073;
+  --ok-weak: #12331f;
+  --warn: #ffd60a;
+  --warn-weak: #3a3110;
+  --urgent: #ff5147;
+  --urgent-weak: #3d1512;
+  --focus: #9cc2ff;
+  --shadow-sm: none;
+}
+body[data-theme="dark"] mark { color: #171a20; }
+body[data-theme="dark"] .chip-warn { color: #1d1500; background: var(--warn); border-color: var(--warn); }
+body[data-theme="dark"] .cd-overlay { background: rgba(8, 10, 15, .94); }
+body[data-theme="dark"] .cd-tick { background: rgba(18, 21, 28, .9); }
+body[data-theme="dark"] .primary { color: #0b1020; }
+body[data-theme="dark"] .cue-url-open { color: #0b1020; }
+
 /* ---------- 土台 ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }

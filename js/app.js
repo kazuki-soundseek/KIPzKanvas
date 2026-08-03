@@ -1256,6 +1256,15 @@
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
 
+  function setTheme(t) {
+    document.body.dataset.theme = t;
+    localStorage.setItem('kanpe-theme', t);
+    var b = $('#btn-theme');
+    if (b) b.textContent = t === 'dark' ? '☀️' : '🌙';
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = t === 'dark' ? '#12151c' : '#f4f6f9';
+  }
+
   function setFontScale(v) {
     fontScale = Math.min(1, Math.max(0.5, v));
     localStorage.setItem('kanpe-font-scale', String(fontScale));
@@ -1276,6 +1285,10 @@
     $('#join-form').addEventListener('submit', function (e) { e.preventDefault(); join(); });
 
     setSound(soundOn);
+    setTheme(localStorage.getItem('kanpe-theme') === 'dark' ? 'dark' : 'light');
+    $('#btn-theme').addEventListener('click', function () {
+      setTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
     $('#btn-sound').addEventListener('click', function () { setSound(!soundOn); initAudio(); });
     $('#btn-fullscreen').addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', updateFsBtn);
