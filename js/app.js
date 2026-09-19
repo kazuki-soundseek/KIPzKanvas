@@ -348,10 +348,19 @@
       if (last && last.mark === mark) last.text += text;
       else segs.push({ text: text, mark: mark });
     }
+    /* 段落(div/p)の最後に置かれた<br>は、ブラウザが空行を見せるために入れる詰め物。改行として数えると空行が1つ増える */
+    function isBlockFillerBr(br) {
+      var p = br.parentNode;
+      if (!p || p === composeEl || (p.nodeName !== 'DIV' && p.nodeName !== 'P')) return false;
+      for (var s = br.nextSibling; s; s = s.nextSibling) {
+        if (s.nodeType !== 3 || s.nodeValue.length) return false;
+      }
+      return true;
+    }
     function walk(node, inMark) {
       node.childNodes.forEach(function (n) {
         if (n.nodeType === 3) add(n.nodeValue, inMark);
-        else if (n.nodeName === 'BR') add('\n', inMark);
+        else if (n.nodeName === 'BR') { if (!isBlockFillerBr(n)) add('\n', inMark); }
         else if (n.nodeName === 'MARK') walk(n, true);
         else {
           if ((n.nodeName === 'DIV' || n.nodeName === 'P') && segs.length) add('\n', inMark);
@@ -411,6 +420,8 @@
   }
 
   function insertPlainText(text) {
+    /* Windowsの貼り付けは改行が「CR+LF」の2文字で来ることがある。見えないCRが指示に混ざらないようLFだけに揃える */
+    text = String(text).replace(/\r\n?/g, '\n');
     var sel = window.getSelection();
     if (!sel.rangeCount || !composeEl.contains(sel.getRangeAt(0).commonAncestorContainer)) {
       composeEl.appendChild(document.createTextNode(text));
@@ -424,6 +435,42 @@
     range.setEndAfter(node);
     sel.removeAllRanges();
     sel.addRange(range);
+  }
+
+  /* 入力欄に改行を1つ入れる。Enterをブラウザ任せにすると段落(div)で包まれて空行の数え方が狂うため、自前で入れる。
+     まずブラウザの改行挿入に任せる（Chrome系は<br>ではなく改行文字が入る）。使えない環境だけ<br>を手で差し込む */
+  function insertComposeLineBreak() {
+    var ok = false;
+    try { ok = document.execCommand('insertLineBreak'); } catch (e) { ok = false; }
+    if (ok) return;
+    var sel = window.getSelection();
+    if (!sel.rangeCount || !composeEl.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      composeEl.appendChild(document.createElement('br'));
+      return;
+    }
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    var br = document.createElement('br');
+    range.insertNode(br);
+    /* 入力欄の最後の<br>は次の行として描かれない。後ろに中身が何も無いときだけ、見せ用の<br>を入力欄の末尾に足す
+       （送信時に末尾の改行は落とすので、指示の行数は変わらない） */
+    var hasAfter = false;
+    for (var n = br; n && n !== composeEl && !hasAfter; n = n.parentNode) {
+      for (var s = n.nextSibling; s; s = s.nextSibling) {
+        if (s.nodeType !== 3 || s.nodeValue.length) { hasAfter = true; break; }
+      }
+    }
+    if (!hasAfter) composeEl.appendChild(document.createElement('br'));
+    range.setStartAfter(br);
+    range.setEndAfter(br);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  /* キーでの送信(Shift+Enter)を有効にするか。タッチ操作が主の端末（スマホ・タブレット）では、
+     画面キーボードが大文字用のShiftを付けたままEnterを知らせてくる機種があり誤送信の元になるので、送信はボタンだけにする */
+  function keySendEnabled() {
+    return !(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
   }
 
   function sendCompose() {
@@ -444,13 +491,13 @@
     editingCueId = cue.id;
     setComposeSegments(cue.segments && cue.segments.length ? cue.segments : segsFromText(cue.text));
     $('#edit-badge').hidden = false;
-    $('#btn-send').textContent = '更新';
+    $('#btn-send-label').textContent = '更新';
     composeEl.focus();
   }
   function stopEditing() {
     editingCueId = null;
     $('#edit-badge').hidden = true;
-    $('#btn-send').textContent = '送信';
+    $('#btn-send-label').textContent = '送信';
   }
 
   function startCountdown(sec) {
@@ -1349,8 +1396,32 @@
     $('#btn-unmark').addEventListener('click', clearMarks);
     $('#edit-cancel').addEventListener('click', function () { stopEditing(); composeEl.textContent = ''; });
     composeEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCompose(); }
+      if (e.key !== 'Enter') return;
+      /* 日本語変換を確定するEnterは、送信にも改行にも使わない（229はSafari等が変換中に返す値） */
+      if (e.isComposing || e.keyCode === 229) return;
+      /* タッチ端末はキーを横取りしない（画面キーボードの自動修正を乱さないため）。改行は下の beforeinput が整える */
+      if (!keySendEnabled()) return;
+      e.preventDefault();
+      /* 長めの指示が細切れに送られるのを防ぐため、送信は Shift+Enter。素のEnterは改行 */
+      if (e.shiftKey) sendCompose();
+      else insertComposeLineBreak();
     });
+    /* キーの種類を知らせてこない端末（Androidの画面キーボード等）でも、Enterが段落(div)ではなく改行1つになるよう揃える */
+    composeEl.addEventListener('beforeinput', function (e) {
+      if (e.inputType !== 'insertParagraph') return;
+      e.preventDefault();
+      insertComposeLineBreak();
+    });
+    /* 改行や空白だけが残って空に見える状態なら本当に空へ戻す（薄い案内文を再び出すため） */
+    composeEl.addEventListener('input', function (e) {
+      if (e.isComposing) return;
+      if (composeEl.firstChild && !composeEl.querySelector('mark') && !composeEl.textContent.trim()) composeEl.textContent = '';
+    });
+    if (!keySendEnabled()) {
+      composeEl.dataset.placeholder = '指示を入力（送信は下の「送信」ボタン）';
+      $('#btn-send').removeAttribute('aria-keyshortcuts');
+      $('#btn-send').removeAttribute('title');
+    }
     composeEl.addEventListener('paste', function (e) {
       var items = (e.clipboardData && e.clipboardData.items) || [];
       for (var i = 0; i < items.length; i++) {

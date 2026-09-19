@@ -20,8 +20,11 @@
       "**/node_modules/**",
       "README.md",
       "CLAUDE.md",
+      "AGENTS.md",
       "dev-server.js",
-      "*.log"
+      "*.log",
+      "**/desktop.ini",
+      "**/Thumbs.db"
     ]
   },
   "database": {

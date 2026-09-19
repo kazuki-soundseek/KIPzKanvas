@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="KIPzKanvas">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -88,14 +88,17 @@
         <span>送信済みの指示を編集中 →「更新」で現地に反映</span>
         <button type="button" id="edit-cancel" class="ghost small">新規入力に戻る</button>
       </div>
-      <div id="compose" class="compose" contenteditable="true" data-placeholder="指示を入力（Enterで送信／Shift+Enterで改行）"></div>
+      <div id="compose" class="compose" contenteditable="true" role="textbox" aria-multiline="true" aria-label="指示を入力" data-placeholder="指示を入力（Enterで改行／Shift＋Enterで送信）"></div>
       <div class="compose-tools">
         <button type="button" id="btn-mark" class="tool-btn" title="選択した文字にマーカー">🖊 マーカー</button>
         <button type="button" id="btn-unmark" class="tool-btn" title="マーカーを消す">解除</button>
         <button type="button" id="btn-image" class="tool-btn" title="画像を送る">📷 画像</button>
         <button type="button" id="btn-draw" class="tool-btn" title="手書きで送る">✍️ 手書き</button>
         <input type="file" id="image-input" accept="image/*" hidden>
-        <button type="button" id="btn-send" class="primary send-btn">送信</button>
+        <button type="button" id="btn-send" class="primary send-btn" aria-keyshortcuts="Shift+Enter" title="Shift＋Enter でも送信できます（Enterだけなら改行）">
+          <span id="btn-send-label" class="send-label">送信</span>
+          <span class="send-key" aria-hidden="true">Shift＋Enter</span>
+        </button>
       </div>
       <div class="color-pick" id="color-pick">
         <label><input type="radio" name="cuecolor" value="normal" checked><span>通常</span></label>
@@ -255,10 +258,10 @@
   </div>
 </div>
 
-<script src="js/qrcode.js?v=2"></script>
-<script src="firebase-config.js?v=2"></script>
-<script src="js/store.js?v=7"></script>
-<script src="js/transport.js?v=7"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/qrcode.js?v=3"></script>
+<script src="firebase-config.js?v=3"></script>
+<script src="js/store.js?v=8"></script>
+<script src="js/transport.js?v=8"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>
