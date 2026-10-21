@@ -45,3 +45,4 @@
 - 本番の部屋コードは推測されにくく（例: kipz-0809-xR7）。機密は書かない・映さない
 - 番組ごとに新しい部屋コード推奨（履歴が混ざらない）
 - iPhone Safariのみ全画面ボタン非対応（ホーム画面追加で代替）
+- 2026-10-22 セキュリティ棚卸し: 10/21公開のPHP・Node.js緊急修正は対象外。本番はFirebase Hostingの静的配信のみで、firebase.jsonにfunctions/rewrites無し・リポジトリにpackage.json/PHP無し・Cloud Functionsはサービス未使用（管理APIがSERVICE_DISABLED応答）を確認。dev-server.jsはローカル試験専用で配信除外（開発PCのNode更新は別スレッドで10/28以降）
